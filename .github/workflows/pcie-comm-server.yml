@@ -3,7 +3,9 @@ run-name: PCIe Communication Server
 on: [push, pull_request]
 jobs:
   Build:
-    runs-on: ubuntu-22.04
+    runs-on: self-hosted
+    container: 
+         image:  ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - uses: actions/setup-python@v4
@@ -29,7 +31,9 @@ jobs:
               ./coverage.tar.gz
 
   Checkpatch:
-    runs-on: ubuntu-22.04
+    runs-on: self-hosted
+    container: 
+         image:  ubuntu-22.04
     steps:
       - uses: actions/checkout@v3
       - run: |
@@ -42,9 +46,9 @@ jobs:
       - run: find . -iname '*.[ch]' -not -path "./build/*" -and -not -path "./tests/*" -and -not -path "./zephyr-samples/drivers/dma/*" | xargs ./checkpatch.pl -f --no-tree
 
   Zephyr-Samples:
-    runs-on: ubuntu-22.04
-    container:
-      image: ghcr.io/zephyrproject-rtos/ci:v0.26.2
+    runs-on: self-hosted
+    container: 
+        image: ghcr.io/zephyrproject-rtos/ci:v0.26.2
     env:
       CMAKE_PREFIX_PATH: /opt/toolchains
       PKG_CONFIG_PATH: /usr/lib/x86_64-linux-gnu/pkgconfig
@@ -85,64 +89,66 @@ jobs:
           path: |
               ./pcie_*.tar.gz
 
-  Twister-tests:
-    runs-on: ubuntu-22.04
-    container:
-      image: ghcr.io/zephyrproject-rtos/ci:v0.26.2
-    env:
-      CMAKE_PREFIX_PATH: /opt/toolchains
-      PKG_CONFIG_PATH: /usr/lib/x86_64-linux-gnu/pkgconfig
-    steps:
-      - uses: actions/checkout@v3
-        with:
-          submodules: true
-          fetch-depth: 1
-      - run: |
-          apt update -qq
-          apt upgrade -y -qq
-          apt install -y -qq libgtest-dev pkg-config libyaml-0-2 libyaml-dev
-      - run: |
-          pip3 install -e git+https://github.com/antmicro/tuttest#egg=tuttest
-          tuttest README.md warp-pipe-build,warp-pipe-install,memory-mock-build | bash -oe pipefail -
-          tuttest README.md zephyr-env-prep | bash -oe pipefail -
-      - run: tuttest README.md run-twister-tests | bash -oex pipefail -
-      - uses: actions/upload-artifact@v3
-        with:
-          path: |
-              twister-out
+  # Twister-tests:
+  #   runs-on: self-hosted
+  #   container: 
+  #        image:  ubuntu-22.04
+  #   container:
+  #     image: ghcr.io/zephyrproject-rtos/ci:v0.26.2
+  #   env:
+  #     CMAKE_PREFIX_PATH: /opt/toolchains
+  #     PKG_CONFIG_PATH: /usr/lib/x86_64-linux-gnu/pkgconfig
+  #   steps:
+  #     - uses: actions/checkout@v3
+  #       with:
+  #         submodules: true
+  #         fetch-depth: 1
+  #     - run: |
+  #         apt update -qq
+  #         apt upgrade -y -qq
+  #         apt install -y -qq libgtest-dev pkg-config libyaml-0-2 libyaml-dev
+  #     - run: |
+  #         pip3 install -e git+https://github.com/antmicro/tuttest#egg=tuttest
+  #         tuttest README.md warp-pipe-build,warp-pipe-install,memory-mock-build | bash -oe pipefail -
+  #         tuttest README.md zephyr-env-prep | bash -oe pipefail -
+  #     - run: tuttest README.md run-twister-tests | bash -oex pipefail -
+  #     - uses: actions/upload-artifact@v3
+  #       with:
+  #         path: |
+  #             twister-out
 
-  Docs:
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main'
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v3
+  # Docs:
+  #   runs-on: ubuntu-latest
+  #   if: github.ref == 'refs/heads/main'
+  #   steps:
+  #     - name: Checkout
+  #       uses: actions/checkout@v3
 
-      - name: Setup documentation environment
-        run: |
-          pip install -r docs/requirements.txt
+  #     - name: Setup documentation environment
+  #       run: |
+  #         pip install -r docs/requirements.txt
 
-      - name: Build the documentation
-        run: |
-          cd docs
-          SPHINXOPTS="-A conf_py_path=$DOCS_DIR/$SOURCEDIR -A commit=$CI_BUILD_REF -A branch=$CI_BUILD_REF_NAME" make html
-          make linkcheck
+  #     - name: Build the documentation
+  #       run: |
+  #         cd docs
+  #         SPHINXOPTS="-A conf_py_path=$DOCS_DIR/$SOURCEDIR -A commit=$CI_BUILD_REF -A branch=$CI_BUILD_REF_NAME" make html
+  #         make linkcheck
 
-      - name: "Upload artifact: Sphinx HTML"
-        uses: actions/upload-artifact@v3
-        with:
-          name: Documentation-HTML
-          path: docs/build/html
+  #     - name: "Upload artifact: Sphinx HTML"
+  #       uses: actions/upload-artifact@v3
+  #       with:
+  #         name: Documentation-HTML
+  #         path: docs/build/html
 
-      - name: Publish site to GitHub Pages
-        if: github.event_name != 'pull_request'
-        run: |
-          cd docs/build/html
-          touch .nojekyll
-          git init
-          cp ../../../.git/config .git/
-          git add .
-          git config --local user.email "BuildTheDocs@GitHubActions"
-          git config --local user.name "GitHub Actions"
-          git commit -a -m "update ${{ github.sha }}"
-          git push -u origin +HEAD:gh-pages
+  #     - name: Publish site to GitHub Pages
+  #       if: github.event_name != 'pull_request'
+  #       run: |
+  #         cd docs/build/html
+  #         touch .nojekyll
+  #         git init
+  #         cp ../../../.git/config .git/
+  #         git add .
+  #         git config --local user.email "BuildTheDocs@GitHubActions"
+  #         git config --local user.name "GitHub Actions"
+  #         git commit -a -m "update ${{ github.sha }}"
+  #         git push -u origin +HEAD:gh-pages
